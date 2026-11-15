@@ -142,7 +142,7 @@
 <div class="wrap">
   <div class="top">
     <div>
-      <div class="sub">Bourse CROUS · nov. 2026 → août 2027</div>
+      <div class="sub">Bourse CROUS · déc. 2026 → août 2027</div>
       <h1>Mon Budget</h1>
     </div>
     <div class="saved" id="saved"><i></i><span>Sauvegardé</span></div>
@@ -152,7 +152,7 @@
     <div class="k sub">Capital projeté fin août 2027 (objectif)</div>
     <div class="big num" id="heroFinal">—</div>
     <div class="row">
-      <div><div class="k">Départ nov. 2026</div><div class="v num" id="heroStart">—</div></div>
+      <div><div class="k">Capital au 1er déc.</div><div class="v num" id="heroStart">—</div></div>
       <div><div class="k">Épargne totale</div><div class="v num pos" id="heroSaved">—</div></div>
       <div style="text-align:right"><div class="k">Fin du mois affiché</div><div class="v num" id="heroCur">—</div></div>
     </div>
@@ -214,7 +214,7 @@
   <section id="v-set" class="hidden">
     <div class="card">
       <h2>Capital de départ</h2>
-      <label class="f" for="inStart">Montant au début de novembre 2026 (€)</label>
+      <label class="f" for="inStart">Capital au 1er décembre 2026 (€)</label>
       <input class="in num" id="inStart" inputmode="decimal">
     </div>
     <div class="card">
@@ -277,7 +277,7 @@
 (() => {
   "use strict";
   const KEY = "budget-crous-v1";
-  const MONTHS = ["2026-11","2026-12","2027-01","2027-02","2027-03","2027-04","2027-05","2027-06","2027-07","2027-08"];
+  const MONTHS = ["2026-12","2027-01","2027-02","2027-03","2027-04","2027-05","2027-06","2027-07","2027-08"];
   const MNAMES = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
   const MSHORT = ["janv.","févr.","mars","avr.","mai","juin","juil.","août","sept.","oct.","nov.","déc."];
   const CATS = {
@@ -311,7 +311,7 @@
   function defaults(){
     const income={}, savings={}, expenses=[];
     const add=(month,name,cents,cat,date,note,fixed=true)=>expenses.push({id:uid(),month,name,amount:cents,cat,date:date||"",note:note||"",fixed});
-    const fitness={"2026-11":"2026-11-16","2026-12":"2026-12-14","2027-01":"2027-01-11","2027-02":"2027-02-08","2027-03":"2027-03-08"};
+    const fitness={"2026-12":"2026-12-14","2027-01":"2027-01-11","2027-02":"2027-02-08","2027-03":"2027-03-08"};
     MONTHS.forEach(k=>{
       const summer = k==="2027-07"||k==="2027-08";
       income[k] = summer ? 55050 : 55060;
@@ -319,11 +319,10 @@
       add(k,"Loyer",10000,"logement","","Mensuel");
       add(k,"Forfait téléphone",1000,"abonnements",k+"-05","Wallet · avant le 5");
       add(k,"Alimentation",7130,"alimentation","","Mensuel");
-      if (k==="2026-11") add(k,"Pass Imagine R",9540,"transport","2026-11-05","Rattrapage initial");
-      else if (!summer) add(k,"Pass Imagine R",4370,"transport",k+"-05","Mensualité");
+      if (!summer) add(k,"Pass Imagine R",4370,"transport",k+"-05","Mensualité");
       if (fitness[k]) add(k,"Fitness Park",2500,"sport",fitness[k], k==="2027-03"?"Dernier prélèvement":"Toutes les 4 semaines");
     });
-    return {v:1,start:76000,income,savings,expenses};
+    return {v:3,start:70000,income,savings,expenses};
   }
 
   // ---------- Stockage ----------
@@ -331,9 +330,21 @@
   function load(){
     try{
       const raw = localStorage.getItem(KEY);
-      if (raw){ const d = JSON.parse(raw); if (valid(d)) return d; }
+      if (raw){ const d = JSON.parse(raw); if (valid(d)) return migrate(d); }
     }catch(e){ storageOK=false; }
     return defaults();
+  }
+  // v1 → v2 : novembre 2026 est clôturé (épargne déjà faite), le plan commence en décembre
+  function migrate(d){
+    if (!d.v || d.v<2){
+      d.expenses = d.expenses.filter(e=>MONTHS.includes(e.month));
+      Object.keys(d.income).forEach(k=>{ if(!MONTHS.includes(k)) delete d.income[k]; });
+      Object.keys(d.savings).forEach(k=>{ if(!MONTHS.includes(k)) delete d.savings[k]; });
+      d.v = 2;
+    }
+    // v2 → v3 : capital réel au 1er décembre = 700 €
+    if (d.v<3){ if (d.start===76000) d.start=70000; d.v = 3; }
+    return d;
   }
   function valid(d){
     return d && typeof d.start==="number" && d.income && d.savings && Array.isArray(d.expenses);
@@ -598,7 +609,7 @@
     }catch(e){ $("io").value=dump(); }
   });
   $("btnImp").addEventListener("click",()=>{
-    try{ const d=JSON.parse($("io").value); if(!valid(d)) throw 0; S=d; commit();
+    try{ const d=JSON.parse($("io").value); if(!valid(d)) throw 0; S=migrate(d); commit();
       $("ioMsg").style.color="var(--green)"; $("ioMsg").textContent="Sauvegarde importée."; }
     catch(e){ $("ioMsg").style.color="var(--red)"; $("ioMsg").textContent="Ce texte n'est pas une sauvegarde valide."; }
   });
