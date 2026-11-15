@@ -1,5 +1,5 @@
 // Service worker : fonctionnement hors ligne (cache local, aucune donnée envoyée)
-const CACHE = "budget-v1";
+const CACHE = "budget-v2";
 const ASSETS = [
   "./",
   "./index.html",

@@ -62,13 +62,17 @@
   .btn-del.confirm{background:var(--red);color:#2a0b0b;border-color:var(--red)}
 
   .list{display:flex;flex-direction:column;gap:8px}
-  .item{display:flex;align-items:center;gap:10px;background:var(--card2);border-radius:12px;padding:10px 10px 10px 12px}
+  .item{cursor:pointer;display:flex;align-items:center;gap:10px;background:var(--card2);border-radius:12px;padding:10px 10px 10px 12px}
   .ico{flex:0 0 36px;height:36px;border-radius:10px;display:grid;place-items:center;font-size:18px}
   .meta{flex:1;min-width:0}
   .meta .n{font-weight:600;overflow-wrap:anywhere}
   .right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex:0 0 auto}
   .meta .d{font-size:12px;color:var(--mut)}
   .amt{font-weight:700;white-space:nowrap}
+  .item:active{background:#283044}
+  .hint{font-size:12px;color:var(--mut);margin:-4px 0 10px}
+  .btn-fix{display:block;margin-top:8px;background:#fecaca;color:#3a1d1d;border:0;border-radius:10px;padding:8px 12px;font:inherit;font-weight:700;cursor:pointer}
+  .stat .k .pen{float:right;opacity:.7}
   .empty{color:var(--mut);text-align:center;padding:16px;font-size:14px}
   .tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;background:#2a3142;color:var(--mut);margin-left:6px}
   .catsum{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
@@ -160,8 +164,8 @@
     <div class="card">
       <div class="top" style="margin-bottom:10px"><h2 id="mTitle">Mois</h2><span class="sub" id="mCount"></span></div>
       <div class="grid2">
-        <div class="stat"><div class="k">Revenus (bourse)</div><input id="inInc" class="num" inputmode="decimal" aria-label="Revenus du mois"></div>
-        <div class="stat"><div class="k">Objectif d'épargne</div><input id="inSav" class="num" inputmode="decimal" aria-label="Épargne du mois"></div>
+        <div class="stat"><div class="k">Revenus (bourse) <span class="pen">✏️</span></div><input id="inInc" class="num" inputmode="decimal" aria-label="Revenus du mois"></div>
+        <div class="stat"><div class="k">Objectif d'épargne <span class="pen">✏️</span></div><input id="inSav" class="num" inputmode="decimal" aria-label="Épargne du mois"></div>
         <div class="stat"><div class="k">Dépenses du mois</div><div class="v num neg" id="mExp">—</div></div>
         <div class="stat"><div class="k">Disponible avant épargne</div><div class="v num" id="mAvail">—</div></div>
         <div class="stat reste"><div><div class="k">Reste après épargne</div><div class="sub" style="font-size:11px">revenus − dépenses − épargne</div></div><div class="v num" id="mRest" style="font-size:22px">—</div></div>
@@ -174,6 +178,7 @@
 
     <div class="card">
       <h2 style="margin-bottom:10px">Dépenses</h2>
+      <div class="hint">✏️ Touche une dépense pour modifier son nom, son montant ou sa catégorie.</div>
       <div class="list" id="list"></div>
     </div>
   </section>
@@ -257,11 +262,11 @@
     <input class="in num" id="fAmt" inputmode="decimal" placeholder="0,00" autocomplete="off">
     <label class="f">Catégorie</label>
     <div class="cats" id="fCats"></div>
-    <label class="chk"><input type="checkbox" id="fRep"> Répéter chaque mois jusqu'en août 2027</label>
+    <label class="chk"><input type="checkbox" id="fRep"> <span id="fRepTxt">Répéter chaque mois jusqu'en août 2027</span></label>
     <div class="err" id="fErr"></div>
     <div class="btns" style="flex-wrap:nowrap">
       <button type="button" class="btn btn-ghost" id="fCancel" style="flex:1">Annuler</button>
-      <button type="submit" class="btn" style="flex:2;background:var(--green);color:#052e1f">Ajouter</button>
+      <button type="submit" class="btn" id="fSubmit" style="flex:2;background:var(--green);color:#052e1f">Ajouter</button>
     </div>
   </form>
 </div>
@@ -394,7 +399,7 @@
     let msg="";
     if (r.rest<0){
       const max=Math.max(0,r.avail);
-      msg=`<div class="alert">⚠️ Il manque <b>${eur(-r.rest)}</b> pour atteindre l'objectif de ${eur(r.sav)} ce mois-ci. Épargne réellement possible : <b>${eur(max)}</b>${r.avail<0?" (dépenses supérieures aux revenus)":""}.</div>`;
+      msg=`<div class="alert">⚠️ Il manque <b>${eur(-r.rest)}</b> pour atteindre l'objectif de ${eur(r.sav)} ce mois-ci. Épargne réellement possible : <b>${eur(max)}</b>${r.avail<0?" (dépenses supérieures aux revenus)":""}.<button class="btn-fix" id="btnFix" data-v="${max}">Ajuster l'épargne de ce mois à ${eur(max)}</button></div>`;
     } else {
       msg=`<div class="ok">✅ Objectif d'épargne de ${eur(r.sav)} atteint. Capital fin ${mLabel(cur).toLowerCase()} : <b>${eur(r.capObj)}</b>.</div>`;
     }
@@ -406,7 +411,7 @@
     $("list").innerHTML = sorted.length ? sorted.map(e=>{
       const c=CATS[e.cat]||CATS.autre;
       const d=[e.date?dFmt(e.date):"", e.note, c.l].filter(Boolean).join(" · ");
-      return `<div class="item">
+      return `<div class="item" data-edit="${e.id}">
         <div class="ico" style="background:${c.c}">${c.i}</div>
         <div class="meta"><div class="n">${esc(e.name)}${e.fixed?'<span class="tag">fixe</span>':""}</div><div class="d">${esc(d)}</div></div>
         <div class="right"><div class="amt num">−${eur(e.amount)}</div>
@@ -502,10 +507,16 @@
   $("inStart").addEventListener("input",()=>{ const c=toCents($("inStart").value); if(!isNaN(c)){ S.start=c; save(); renderHero(rows()); } });
   $("inStart").addEventListener("blur",()=>render());
 
+  $("mMsg").addEventListener("click",e=>{
+    const b=e.target.closest("#btnFix"); if(!b) return;
+    S.savings[cur]=Number(b.dataset.v); commit(); toast("Épargne ajustée pour "+mLabel(cur).toLowerCase(), false);
+  });
+
   // Supprimer (2 appuis pour confirmer) + annulation
   let armed=null, armT=null, undo=null, toastT=null;
   $("list").addEventListener("click",e=>{
-    const b=e.target.closest("[data-del]"); if(!b) return;
+    const b=e.target.closest("[data-del]");
+    if(!b){ const it=e.target.closest("[data-edit]"); if(it) openSheet(it.dataset.edit); return; }
     const id=b.dataset.del;
     if (armed!==id){
       document.querySelectorAll(".btn-del.confirm").forEach(x=>{x.classList.remove("confirm");x.textContent="Supprimer";});
@@ -532,10 +543,19 @@
     $("fCats").innerHTML = keys.map(k=>`<button type="button" data-c="${k}"><span>${CATS[k].i}</span>${CATS[k].l}</button>`).join(""); })();
   const paintCats=()=>document.querySelectorAll("#fCats button").forEach(b=>b.classList.toggle("on",b.dataset.c===fCat));
   $("fCats").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return; fCat=b.dataset.c; paintCats(); });
-  function openSheet(){
-    $("form").reset(); $("fErr").textContent=""; fCat="alimentation"; paintCats();
+  let editId=null;
+  function openSheet(id){
+    $("form").reset(); $("fErr").textContent="";
+    const ex = typeof id==="string" ? S.expenses.find(x=>x.id===id) : null;
+    editId = ex ? ex.id : null;
+    $("shTitle").textContent = ex ? "Modifier le frais" : "Ajouter un frais";
+    $("fSubmit").textContent = ex ? "Enregistrer" : "Ajouter";
+    $("fRepTxt").textContent = ex ? "Appliquer aussi aux mois suivants (même nom)" : "Répéter chaque mois jusqu'en août 2027";
+    fCat = ex ? ex.cat : "alimentation";
+    if (ex){ $("fName").value=ex.name; $("fAmt").value=plain(ex.amount); }
+    paintCats();
     $("shMonth").textContent="Mois : "+mLabel(cur);
-    $("ov").classList.add("open"); setTimeout(()=>$("fName").focus(),60);
+    $("ov").classList.add("open"); if(!ex) setTimeout(()=>$("fName").focus(),60);
   }
   const closeSheet=()=>$("ov").classList.remove("open");
   $("btnAdd").addEventListener("click",openSheet);
@@ -547,6 +567,17 @@
     const name=$("fName").value.trim(), c=toCents($("fAmt").value);
     if(!name){ $("fErr").textContent="Indique un nom."; return; }
     if(isNaN(c)||c<=0){ $("fErr").textContent="Montant invalide (ex. 12,50)."; return; }
+    if (editId){
+      const ex=S.expenses.find(x=>x.id===editId);
+      if(ex){
+        const later=$("fRep").checked ? MONTHS.slice(MONTHS.indexOf(ex.month)+1) : [];
+        const oldName=ex.name; let n=1;
+        ex.name=name; ex.amount=c; ex.cat=fCat;
+        S.expenses.forEach(x=>{ if(x!==ex && later.includes(x.month) && x.name===oldName){ x.name=name; x.amount=c; x.cat=fCat; n++; } });
+        closeSheet(); commit(); toast(n>1?`Modifié sur ${n} mois`:"Frais modifié", false);
+      }
+      return;
+    }
     const targets = $("fRep").checked ? MONTHS.slice(MONTHS.indexOf(cur)) : [cur];
     targets.forEach(k=>S.expenses.push({id:uid(),month:k,name,amount:c,cat:fCat,date:"",note:targets.length>1?"Répété chaque mois":"",fixed:false}));
     closeSheet(); commit();
